@@ -3,17 +3,10 @@ import math
 import pickle
 
 def vectorize_df(df):
-    vector = {}
     list_df = df.apply(split_text,axis=1)
     tri_gram_df = list_df.apply(tri_gram)
-
-    for line in tri_gram_df:
-        for word in line:
-            if word in vector.keys():
-                vector[word] += 1
-            else:
-                vector[word] = 1
-    return calc_vector(vector)
+    vector = calc_vector(tri_gram_df)
+    return vector
 
 def split_text(text_record):
     return text_record.loc[0].split(" ")
@@ -27,14 +20,24 @@ def tri_gram(text_list):
         ans.extend(gram)
     return ans
 
-def calc_vector(v):
+def calc_vector(gram_df):
+    vector = {}
     r2 = 0
-    for key in v.keys():
-        r2 += v[key]**2
+    for line in gram_df:
+        for word in line:
+            if word in vector.keys():
+                vector[word] += 1
+            else:
+                vector[word] = 1
+
+    for key in vector.keys():
+        r2 += vector[key]**2
+
     r = math.sqrt(r2)
-    for key in v.keys():
-        v[key] /= r
-    return v
+    for key in vector.keys():
+        vector[key] /= r
+
+    return vector
 
 def main():
     tanka = pd.read_csv("kindai.csv",header=None)
