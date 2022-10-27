@@ -22,20 +22,25 @@ def tri_gram(text_list):
 
 def calc_vector(gram_df):
     vector = {}
+    vector["vector"] = {}
+    vector["id"] = {}
     r2 = 0
+    id = 0
     for line in gram_df:
         for word in line:
-            if word in vector.keys():
-                vector[word] += 1
+            if word in vector["vector"].keys():
+                vector["vector"][word] += 1
             else:
-                vector[word] = 1
+                vector["vector"][word] = 1
+                vector["id"][word] = id
+            id += 1
 
-    for key in vector.keys():
-        r2 += vector[key]**2
+    for key in vector["vector"].keys():
+        r2 += vector["vector"][key]**2
 
     r = math.sqrt(r2)
-    for key in vector.keys():
-        vector[key] /= r
+    for key in vector["vector"].keys():
+        vector["vector"][key] /= r
 
     return vector
 
