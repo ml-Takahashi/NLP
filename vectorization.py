@@ -55,5 +55,6 @@ def main():
     with open(tanka_path,"wb") as f2:
         pickle.dump(tanka_vector, f2)
 
+
 if __name__=="__main__":
     main()
