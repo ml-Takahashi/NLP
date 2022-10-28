@@ -1,10 +1,11 @@
+import sys
 import pandas as pd
 import math
-import pickle
+import argparse
 
-def vectorize_df(df):
+def vectorize_df(df,n):
     list_df = df.apply(split_text,axis=1)
-    tri_gram_df = list_df.apply(tri_gram)
+    tri_gram_df = list_df.apply(n_gram,n=n)
     vec_id_dic = calc_vector(tri_gram_df)
     out_df = convert_to_vector(tri_gram_df,vec_id_dic)
     return out_df
@@ -12,12 +13,12 @@ def vectorize_df(df):
 def split_text(text_record):
     return text_record.loc[0].split(" ")
 
-def tri_gram(text_list):
+def n_gram(text_list,n):
     ans = []
     for text in text_list:
         gram = []
-        for i in range(len(text)-2):
-            gram.append(text[i:i+3])
+        for i in range(len(text)-(n-1)):
+            gram.append(text[i:i+n])
         ans.extend(gram)
     return ans
 
@@ -63,18 +64,22 @@ def convert_to_vector(df,dic):
     return out_df
 
 
-def main():
+
+def main(n):
     tanka = pd.read_csv("kindai.csv",header=None)
     waka = pd.read_csv("waka_half.csv",header=None)
 
-    waka_vector_id = vectorize_df(waka)
-    tanka_vector_id = vectorize_df(tanka)
+    waka_vector_id = vectorize_df(waka,n)
+    tanka_vector_id = vectorize_df(tanka,n)
 
-    waka_path = "waka_vector_id.csv"
-    tanka_path = "tanka_vector_id.csv"
+    waka_path = f"{n}_gram_waka_vector_id.csv"
+    tanka_path = f"{n}_gram_tanka_vector_id.csv"
 
     waka_vector_id.to_csv(waka_path,index=False)
-    tanka_vector_id.to_csv(tanka_path,index=False)    
+    tanka_vector_id.to_csv(tanka_path,index=False)
 
 if __name__=="__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("n",default=[3],nargs="*",type=int,help="文章を分割する文字数を指定")
+    args = parser.parse_args()
+    main(n=args.n[0])
