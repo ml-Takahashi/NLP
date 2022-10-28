@@ -5,8 +5,9 @@ import pickle
 def vectorize_df(df):
     list_df = df.apply(split_text,axis=1)
     tri_gram_df = list_df.apply(tri_gram)
-    vector = calc_vector(tri_gram_df)
-    return vector
+    vec_id_dic = calc_vector(tri_gram_df)
+    out_df = convert_to_vector(tri_gram_df,vec_id_dic)
+    return out_df
 
 def split_text(text_record):
     return text_record.loc[0].split(" ")
@@ -44,22 +45,36 @@ def calc_vector(gram_df):
 
     return vector
 
+def convert_to_vector(df,dic):
+    out_vec_list = []
+    out_id_list = []
+    out_df = pd.DataFrame()
+    for i in range(df.shape[0]):
+        vec_list = []
+        id_list = []
+        word_list = df.loc[i]
+        for word in word_list:
+            vec_list.append(dic["vector"][word])
+            id_list.append(dic["id"][word])
+        out_vec_list.append(vec_list)
+        out_id_list.append(id_list)
+    out_df["vector"] = out_vec_list
+    out_df["id"] = out_id_list
+    return out_df
+
+
 def main():
     tanka = pd.read_csv("kindai.csv",header=None)
     waka = pd.read_csv("waka_half.csv",header=None)
 
-    waka_vector = vectorize_df(waka)
-    tanka_vector = vectorize_df(tanka)
+    waka_vector_id = vectorize_df(waka)
+    tanka_vector_id = vectorize_df(tanka)
 
-    waka_path = "waka_vector.pkl"
-    tanka_path = "tanka_vector.pkl"
+    waka_path = "waka_vector_id.csv"
+    tanka_path = "tanka_vector_id.csv"
 
-    with open(waka_path,"wb") as f1:
-        pickle.dump(waka_vector, f1)
-
-    with open(tanka_path,"wb") as f2:
-        pickle.dump(tanka_vector, f2)
-
+    waka_vector_id.to_csv(waka_path,index=False)
+    tanka_vector_id.to_csv(tanka_path,index=False)    
 
 if __name__=="__main__":
     main()
