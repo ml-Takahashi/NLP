@@ -149,3 +149,4 @@ if __name__=="__main__":
     parser.add_argument("n",default=[3],nargs="*",type=int,help="文章を分割する文字数を指定")
     args = parser.parse_args()
     main(n=args.n[0])
+    
