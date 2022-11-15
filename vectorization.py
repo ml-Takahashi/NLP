@@ -5,9 +5,9 @@ import argparse
 import os
 import pickle
 
-def vectorize_df(df,n=3,text_num=1000):
+def vectorize_df(waka_df,tanka_df,n=3,text_num=1000):
     """
-    vector,idを保持するdfと辞書,文ごとの単語の出現回数を保持するdfを取得する関数。
+    vector,idを保持するdfと、文ごとの単語の出現回数を保持するdfを取得する関数。
     
     Parameters
     ----------
@@ -15,24 +15,31 @@ def vectorize_df(df,n=3,text_num=1000):
         和歌or短歌のデータフレーム。
     n : int
         文を区切る文字数。
-    text_num : int
-        1度に処理する文の数（まとめて処理すると終わらないため）。
 
     Returns
     -------
-    out_df : pd.DataFrame
-        vector,idを保持するデータフレーム。
-    id_df : pd.DataFrame
-        文ごとの単語の出現回数を保持するデータフレーム。
-    vec_id_dic : dic
-        vector,id,count（出現回数）,wordを保持する辞書。
+    {waka or tanka}_count_id_df : pd.DataFrame
+        文ごとに出現したidの回数をカウントし、その数を保持するデータフレーム。
+    {waka or tanka}_id_list_df : pd.DataFrame
+        単語をidに置き換え、そのidの並びを保持するデータフレーム。
+    id_dict : dict
+        単語ごとにidを割り当て、その対応関係を保持する辞書。
     """
-    list_df = df.apply(split_text,axis=1)
-    tri_gram_df = list_df.apply(n_gram,n=n)
-    vec_id_dic = calc_vector(tri_gram_df)
-    out_df = convert_to_vector(tri_gram_df,vec_id_dic)
-    id_df = count_id(out_df,vec_id_dic,start_point=0,text_num=text_num)
-    return out_df,id_df,vec_id_dic
+    waka_list_df = waka_df.apply(split_text,axis=1)
+    tanka_list_df = tanka_df.apply(split_text,axis=1)
+    
+    waka_n_gram_df = waka_list_df.apply(n_gram,n=n)
+    tanka_n_gram_df = tanka_list_df.apply(n_gram,n=n)
+
+    id_dict = assign_id(pd.concat([waka_n_gram_df,tanka_n_gram_df],axis=0))
+
+    waka_id_list_df = convert_to_id(waka_n_gram_df,id_dict)
+    tanka_id_list_df = convert_to_id(tanka_n_gram_df,id_dict)
+
+    waka_count_id_df = count_id(waka_id_list_df,id_dict,start_point=0,text_num=text_num)
+    tanka_count_id_df = count_id(tanka_id_list_df,id_dict,start_point=0,text_num=text_num)
+
+    return waka_count_id_df,tanka_count_id_df,waka_id_list_df,tanka_id_list_df,id_dict
 
 def split_text(text_record):
     return text_record.loc[0].split(" ")
@@ -46,81 +53,81 @@ def n_gram(text_list,n):
         ans.extend(gram)
     return ans
 
-def calc_vector(gram_df):
-    vector = {}
-    vector["vector"] = {}  # ベクトルを保持
-    vector["id"] = {}      # 単語ごとにidを割り当て
-    vector["count"] = {}   # 単語の出現回数をカウント
-    vector["word"] = {}    # idからwordを取得する
-    r2 = 0
+def assign_id(gram_df):
+    id_dict = {}
+    id_dict["id"] = {}    # 単語ごとにidを割り当て
+    id_dict["word"] = {}  # idからwordを取得する
     id = 0
     for line in gram_df:
         for word in line:
-            if word in vector["count"].keys():
-                vector["count"][word] += 1
-
-            else:
-                vector["count"][word] = 1
-                vector["id"][word] = id
-                vector["word"][id] = word
+            if word not in id_dict["id"].keys():
+                id_dict["id"][word] = id
+                id_dict["word"][id] = word
                 id += 1
+    return id_dict
 
-    for word in vector["count"].keys():
-        r2 += vector["count"][word]**2
+def count_word(df,dict):
+    dict["count"] = {}
+    for line in df:
+        for word in line:
+            if word in dict["count"].keys():
+                dict["count"][word] += 1
+            else:
+                dict["count"][word] = 1
+    return 
 
-    r = math.sqrt(r2)
-    for word in vector["count"].keys():
-        vector["vector"][word] = vector["count"][word] / r
 
-    return vector
-
-def convert_to_vector(df,dic):
-    out_vec_list = []
+def convert_to_id(df,dict):
     out_id_list = []
     out_df = pd.DataFrame()
     for i in range(df.shape[0]):
-        vec_list = []
         id_list = []
         word_list = df.loc[i]
         for word in word_list:
-            vec_list.append(dic["vector"][word])
-            id_list.append(dic["id"][word])
-        out_vec_list.append(vec_list)
+            id_list.append(dict["id"][word])
         out_id_list.append(id_list)
-    out_df["vector"] = out_vec_list
     out_df["id"] = out_id_list
     return out_df
 
-def count_id(df,dic,start_point=0,text_num=1000):
+def count_id(df,dict,start_point=0,text_num=1000):
     i = 0
-    id_df = pd.DataFrame(columns=dic["id"])
-    height = id_df.shape[0]
-    width = id_df.shape[1]
+    count_id_df = pd.DataFrame(columns=dict["id"])
+    width = count_id_df.shape[1]
     end_point = start_point + text_num
     for id_list in df["id"][start_point:end_point]:
-        id_df.loc[i] = np.zeros(width,dtype=int)
+        count_id_df.loc[i] = np.zeros(width,dtype=int)
         for id in id_list:
-            id_df.loc[i,dic["word"][id]] += 1
+            count_id_df.loc[i,dict["word"][id]] += 1
         i += 1
         if i==end_point:
-            return id_df
-    return id_df
+            return count_id_df
+    return count_id_df
 
-def save_df(data_df,n,save_dir,save_file,waka_or_tanka,text_num=1000):
-    for i in range((data_df.shape[0]//text_num)+1):
+def save_df(waka_df,tanka_df,waka_save_dir,tanka_save_dir,waka_save_file,tanka_save_file,text_num=1000):
+    for i in range(15):  # 和歌と短歌のデータ数がそれぞれ14292,13963のため
         sp = i*text_num
-        save_path = os.path.join(save_dir,f"{i}_"+save_file)
+        waka_save_path = os.path.join(waka_save_dir,f"{i}_"+waka_save_file)
+        tanka_save_path = os.path.join(tanka_save_dir,f"{i}_"+tanka_save_file)
         if sp==0:
-            vector_id_df,id_df,vec_id_dic = vectorize_df(data_df,text_num=text_num)
-            vector_id_df.to_pickle(f"save_vector_id_df/{n}_gram_{waka_or_tanka}_vector_id.pkl")
+            (waka_count_id_df,tanka_count_id_df,waka_id_list_df,tanka_id_list_df,
+            id_dict) = vectorize_df(waka_df,tanka_df,text_num=text_num)
+            waka_id_list_df.to_pickle("id_list_df/waka_id_list_df.pkl")
+            tanka_id_list_df.to_pickle("id_list_df/tanka_id_list_df.pkl")
+            with open("id_dict.pkl","wb") as f:
+                pickle.dump(id_dict,f)
         else:
-            id_df = count_id(vector_id_df,vec_id_dic,start_point=sp,text_num=text_num)
-        id_df.to_pickle(save_path)
+            waka_count_id_df = count_id(waka_id_list_df,id_dict,start_point=sp,text_num=text_num)
+            if i!=14:  # 短歌のデータ数は14000以下のため
+                tanka_count_id_df = count_id(tanka_id_list_df,id_dict,start_point=sp,text_num=text_num)
+        waka_count_id_df.astype("int32").to_pickle(waka_save_path)
+        tanka_count_id_df.astype("int32").to_pickle(tanka_save_path)
 
 def concat_df(data_dir,save_dir,save_file):
     save_name = os.path.join(save_dir,save_file)
     df_list = []
     for file_name in os.listdir(data_dir):
+        if file_name[0]==".":  # .DS_Storeを読み込まないようにするため
+            continue
         with open(os.path.join(data_dir,file_name), mode="rb") as f:
             df_list.append(pickle.load(f))
     save_df = pd.concat(df_list,axis=0).reset_index().drop("index",axis=1)
@@ -133,14 +140,13 @@ def main(n):
 
     waka_count_id_path = f"{n}_gram_waka_count_id.pkl"
     tanka_count_id_path = f"{n}_gram_tanka_count_id.pkl"
-    waka_save_dir = "waka_count_id"
-    tanka_save_dir = "tanka_count_id"
-    save_dir = "save_count_id"
-    save_df(waka,n,waka_save_dir,waka_count_id_path,waka_or_tanka="waka",text_num=1000)
-    save_df(tanka,n,tanka_save_dir,tanka_count_id_path,waka_or_tanka="tanka",text_num=1000)
+    waka_cp_dir = "waka_checkpoints"
+    tanka_cp_dir = "tanka_checkpoints"
+    save_dir = "save_count_id_df"
+    save_df(waka,tanka,waka_cp_dir,tanka_cp_dir,waka_count_id_path,tanka_count_id_path,text_num=1000)
 
-    concat_df(waka_save_dir,save_dir,waka_count_id_path)
-    concat_df(tanka_save_dir,save_dir,tanka_count_id_path)
+    concat_df(waka_cp_dir,save_dir,waka_count_id_path)
+    concat_df(tanka_cp_dir,save_dir,tanka_count_id_path)
 
 
 
