@@ -4,6 +4,7 @@ import math
 import argparse
 import os
 import pickle
+import sys
 
 def vectorize_df(waka_df,tanka_df,n=3,text_num=1000):
     """
@@ -128,7 +129,7 @@ def concat_df(data_dir,save_dir,save_file,n):
     for file_name in os.listdir(data_dir):
         if file_name[0]==".":  # .DS_Storeを読み込まないようにするため
             continue
-        if file_name.split("_")[1]==n:
+        if int(file_name.split("_")[1])==n:
             with open(os.path.join(data_dir,file_name), mode="rb") as f:
                 df_list.append(pickle.load(f))
     save_df = pd.concat(df_list,axis=0).reset_index().drop("index",axis=1)
@@ -136,6 +137,8 @@ def concat_df(data_dir,save_dir,save_file,n):
 
 
 def main(n):
+    print(type(n))
+    sys.exit()
     waka = pd.read_csv("waka_half.csv",header=None)
     tanka = pd.read_csv("kindai.csv",header=None)
 
