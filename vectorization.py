@@ -122,14 +122,15 @@ def save_df(waka_df,tanka_df,waka_save_dir,tanka_save_dir,waka_save_file,tanka_s
         waka_count_id_df.astype("int32").to_pickle(waka_save_path)
         tanka_count_id_df.astype("int32").to_pickle(tanka_save_path)
 
-def concat_df(data_dir,save_dir,save_file):
+def concat_df(data_dir,save_dir,save_file,n):
     save_name = os.path.join(save_dir,save_file)
     df_list = []
     for file_name in os.listdir(data_dir):
         if file_name[0]==".":  # .DS_Storeを読み込まないようにするため
             continue
-        with open(os.path.join(data_dir,file_name), mode="rb") as f:
-            df_list.append(pickle.load(f))
+        if file_name.split("_")[1]==n:
+            with open(os.path.join(data_dir,file_name), mode="rb") as f:
+                df_list.append(pickle.load(f))
     save_df = pd.concat(df_list,axis=0).reset_index().drop("index",axis=1)
     save_df.to_pickle(save_name)
 
@@ -145,8 +146,8 @@ def main(n):
     save_dir = "save_count_id_df"
     save_df(waka,tanka,waka_cp_dir,tanka_cp_dir,waka_count_id_path,tanka_count_id_path,text_num=1000)
 
-    concat_df(waka_cp_dir,save_dir,waka_count_id_path)
-    concat_df(tanka_cp_dir,save_dir,tanka_count_id_path)
+    concat_df(waka_cp_dir,save_dir,waka_count_id_path,n)
+    concat_df(tanka_cp_dir,save_dir,tanka_count_id_path,n)
 
 
 
